@@ -14,9 +14,18 @@ class Devise::RegistrationsController < DeviseController
 
   # POST /resource
   def create
-    build_resource(sign_up_params)
+    resource = build_resource(sign_up_params)
 
-    resource.save
+    r = resource_class.where(email: resource.email).first
+
+    if r and r.provider != 'email' #register before !
+      r.update_attributes provider: 'email', email: resource.email, encrypted_password: resource.encrypted_password
+      r.last_login_in_email! if r.has_attribute?(:last_login_in)
+      resource = r
+    else
+      resource.save
+    end
+    
     yield resource if block_given?
     if resource.persisted?
       if resource.active_for_authentication?
